@@ -6,7 +6,7 @@ import json
 import inspect
 import matplotlib.pyplot as plt
 import pandas as pd
-from multiprocessing import Queue
+from multiprocessing import Queue, Value
 from queue import Empty
 
 import numpy as np
@@ -21,9 +21,13 @@ def get_known_steps():
 
 
 class RegisteredStep(type):
+
+    counter = Value('i', 0)
+
     def __init__(cls, name, bases, clsdict):
         if len(cls.mro()) > 2:
             _known_steps[cls.__name__] = cls
+            cls.counter = RegisteredStep.counter
         super().__init__(name, bases, clsdict)
 
 
@@ -42,6 +46,12 @@ class Step(metaclass=RegisteredStep):
         self.cache_dir = cache_dir
         self.position = None
         self.transaction_started = False
+        with self.counter:
+            self.counter.value += 1
+            self._id = self.counter.value
+
+    def id(self):
+        return self._id
 
     def apply(self, image_data, image_name):
         """
